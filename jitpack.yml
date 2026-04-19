@@ -1,0 +1,12 @@
+# JitPack build configuration.
+# https://jitpack.io/docs/BUILDING/
+#
+# We ship prebuilt native libs in bin/; no native compile on JitPack.
+# Gradle 8.14.3 (pinned on this branch) needs JDK 21+ for Kotlin in
+# buildSrc to parse modern JDK versions; JitPack defaults too low.
+
+jdk:
+  - openjdk21
+
+install:
+  - ./gradlew :imgui-binding:publishToMavenLocal :imgui-lwjgl3:publishToMavenLocal :imgui-app:publishToMavenLocal -x test -x signImguiPublication -x javadoc --no-daemon
