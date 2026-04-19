@@ -322,7 +322,7 @@ See examples in the `example` module for more information about how to use them.
   Node Editor using ImGui. (A bit more complex than ImNodes, but has more features.)
 - [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo/tree/f7bbbe39971d9d45816417a70e9b53a0f698c56e) | [Example](https://github.com/SpaiR/imgui-java/blob/main/example/src/main/java/ExampleImGuizmo.java) <br>
   Immediate mode 3D gizmo for scene editing and other controls based on Dear ImGui.
-- [implot](https://github.com/epezent/implot/tree/555ff688a8134bc0c602123149abe9c17d577475) | [Example](https://github.com/SpaiR/imgui-java/blob/main/example/src/main/java/ExampleImPlot.java) <br>
+- [implot](https://github.com/epezent/implot/tree/v1.0) | [Example](https://github.com/SpaiR/imgui-java/blob/main/example/src/main/java/ExampleImPlot.java) <br>
   Advanced 2D Plotting for Dear ImGui.  
 - [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit/tree/0a88824f7de8d0bd11d8419066caa7d3469395c4) | [Example](https://github.com/SpaiR/imgui-java/blob/main/example/src/main/java/ExampleImGuiColorTextEdit.java) <br>
   Syntax highlighting text editor for ImGui.
