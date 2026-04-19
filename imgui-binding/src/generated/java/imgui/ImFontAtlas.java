@@ -84,6 +84,52 @@ public final class ImFontAtlas extends ImGuiStructDestroyable {
         return (uintptr_t)THIS->AddFontDefault(reinterpret_cast<ImFontConfig*>(imFontConfig));
     */
 
+    /**
+     * Embedded scalable (vector) default font — recommended at any higher size. (since imgui 1.92)
+     */
+    public ImFont addFontDefaultVector() {
+        return new ImFont(nAddFontDefaultVector());
+    }
+
+    /**
+     * Embedded scalable (vector) default font — recommended at any higher size. (since imgui 1.92)
+     */
+    public ImFont addFontDefaultVector(final ImFontConfig imFontConfig) {
+        return new ImFont(nAddFontDefaultVector(imFontConfig.ptr));
+    }
+
+    private native long nAddFontDefaultVector(); /*
+        return (uintptr_t)THIS->AddFontDefaultVector();
+    */
+
+    private native long nAddFontDefaultVector(long imFontConfig); /*
+        return (uintptr_t)THIS->AddFontDefaultVector(reinterpret_cast<ImFontConfig*>(imFontConfig));
+    */
+
+    /**
+     * Embedded classic pixel-clean bitmap default font — recommended at size 13px with no scaling.
+     * (since imgui 1.92)
+     */
+    public ImFont addFontDefaultBitmap() {
+        return new ImFont(nAddFontDefaultBitmap());
+    }
+
+    /**
+     * Embedded classic pixel-clean bitmap default font — recommended at size 13px with no scaling.
+     * (since imgui 1.92)
+     */
+    public ImFont addFontDefaultBitmap(final ImFontConfig imFontConfig) {
+        return new ImFont(nAddFontDefaultBitmap(imFontConfig.ptr));
+    }
+
+    private native long nAddFontDefaultBitmap(); /*
+        return (uintptr_t)THIS->AddFontDefaultBitmap();
+    */
+
+    private native long nAddFontDefaultBitmap(long imFontConfig); /*
+        return (uintptr_t)THIS->AddFontDefaultBitmap(reinterpret_cast<ImFontConfig*>(imFontConfig));
+    */
+
     public ImFont addFontFromFileTTF(final String filename, final float sizePixels) {
         return new ImFont(nAddFontFromFileTTF(filename, sizePixels));
     }
@@ -771,29 +817,9 @@ public final class ImFontAtlas extends ImGuiStructDestroyable {
 
     // TexID implemented as SetTexID function
 
-    /**
-     * Texture width desired by user before Build(). Must be a power-of-two.
-     * If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
-     */
-    public int getTexDesiredWidth() {
-        return nGetTexDesiredWidth();
-    }
-
-    /**
-     * Texture width desired by user before Build(). Must be a power-of-two.
-     * If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
-     */
-    public void setTexDesiredWidth(final int value) {
-        nSetTexDesiredWidth(value);
-    }
-
-    private native int nGetTexDesiredWidth(); /*
-        return THIS->TexDesiredWidth;
-    */
-
-    private native void nSetTexDesiredWidth(int value); /*
-        THIS->TexDesiredWidth = value;
-    */
+    // Note: TexDesiredWidth was removed in imgui 1.92. Use TexMinWidth / TexMaxWidth
+    // on the C++ side if you need to clamp atlas dimensions; these are not currently
+    // surfaced in the Java binding.
 
     /**
      * Padding between glyphs within texture in pixels. Defaults to 1.

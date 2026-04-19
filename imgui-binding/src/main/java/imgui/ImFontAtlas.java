@@ -72,6 +72,19 @@ public final class ImFontAtlas extends ImGuiStructDestroyable {
     @BindingMethod
     public native ImFont AddFontDefault(@OptArg ImFontConfig imFontConfig);
 
+    /**
+     * Embedded scalable (vector) default font — recommended at any higher size. (since imgui 1.92)
+     */
+    @BindingMethod
+    public native ImFont AddFontDefaultVector(@OptArg ImFontConfig imFontConfig);
+
+    /**
+     * Embedded classic pixel-clean bitmap default font — recommended at size 13px with no scaling.
+     * (since imgui 1.92)
+     */
+    @BindingMethod
+    public native ImFont AddFontDefaultBitmap(@OptArg ImFontConfig imFontConfig);
+
     @BindingMethod
     public native ImFont AddFontFromFileTTF(String filename, float sizePixels, @OptArg(callValue = "NULL") ImFontConfig fontConfig, @OptArg @ArgValue(callPrefix = "(ImWchar*)") short[] glyphRanges);
 
@@ -366,12 +379,9 @@ public final class ImFontAtlas extends ImGuiStructDestroyable {
 
     // TexID implemented as SetTexID function
 
-    /**
-     * Texture width desired by user before Build(). Must be a power-of-two.
-     * If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
-     */
-    @BindingField
-    public int TexDesiredWidth;
+    // Note: TexDesiredWidth was removed in imgui 1.92. Use TexMinWidth / TexMaxWidth
+    // on the C++ side if you need to clamp atlas dimensions; these are not currently
+    // surfaced in the Java binding.
 
     /**
      * Padding between glyphs within texture in pixels. Defaults to 1.
