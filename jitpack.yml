@@ -10,4 +10,6 @@ jdk:
   - openjdk21
 
 install:
-  - ./gradlew :imgui-binding:publishToMavenLocal :imgui-lwjgl3:publishToMavenLocal :imgui-app:publishToMavenLocal -x test -x signImguiPublication -x javadoc --no-daemon
+  # signImguiPublication is only registered when SIGNING_KEY_ID is set in the env,
+  # which JitPack doesn't do — so no exclude needed.
+  - ./gradlew :imgui-binding:publishToMavenLocal :imgui-lwjgl3:publishToMavenLocal :imgui-app:publishToMavenLocal -x test -x javadoc --no-daemon
