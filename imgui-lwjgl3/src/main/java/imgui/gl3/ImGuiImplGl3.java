@@ -5,11 +5,14 @@ import imgui.ImFontAtlas;
 import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.ImGuiViewport;
+import imgui.ImTextureData;
+import imgui.ImTextureRect;
 import imgui.ImVec4;
 import imgui.callback.ImPlatformFuncViewport;
 import imgui.flag.ImGuiBackendFlags;
 import imgui.flag.ImGuiConfigFlags;
 import imgui.flag.ImGuiViewportFlags;
+import imgui.flag.ImTextureStatus;
 import imgui.type.ImInt;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
@@ -36,6 +39,7 @@ import static org.lwjgl.opengl.GL32.GL_BLEND_SRC_ALPHA;
 import static org.lwjgl.opengl.GL32.GL_BLEND_SRC_RGB;
 import static org.lwjgl.opengl.GL32.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL32.GL_COMPILE_STATUS;
+import static org.lwjgl.opengl.GL32.GL_CLAMP_TO_EDGE;
 import static org.lwjgl.opengl.GL32.GL_CONTEXT_COMPATIBILITY_PROFILE_BIT;
 import static org.lwjgl.opengl.GL32.GL_CONTEXT_PROFILE_MASK;
 import static org.lwjgl.opengl.GL32.GL_CULL_FACE;
@@ -69,6 +73,8 @@ import static org.lwjgl.opengl.GL32.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL32.GL_TEXTURE_BINDING_2D;
 import static org.lwjgl.opengl.GL32.GL_TEXTURE_MAG_FILTER;
 import static org.lwjgl.opengl.GL32.GL_TEXTURE_MIN_FILTER;
+import static org.lwjgl.opengl.GL32.GL_TEXTURE_WRAP_S;
+import static org.lwjgl.opengl.GL32.GL_TEXTURE_WRAP_T;
 import static org.lwjgl.opengl.GL32.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL32.GL_TRUE;
 import static org.lwjgl.opengl.GL32.GL_UNPACK_ALIGNMENT;
@@ -123,6 +129,7 @@ import static org.lwjgl.opengl.GL32.glPolygonMode;
 import static org.lwjgl.opengl.GL32.glScissor;
 import static org.lwjgl.opengl.GL32.glShaderSource;
 import static org.lwjgl.opengl.GL32.glTexImage2D;
+import static org.lwjgl.opengl.GL32.glTexSubImage2D;
 import static org.lwjgl.opengl.GL32.glTexParameteri;
 import static org.lwjgl.opengl.GL32.glUniform1i;
 import static org.lwjgl.opengl.GL32.glUniformMatrix4fv;
@@ -296,6 +303,9 @@ public class ImGuiImplGl3 {
         // We can create multi-viewports on the Renderer side (optional)
         io.addBackendFlags(ImGuiBackendFlags.RendererHasViewports);
 
+        // We support honoring ImTextureData create/update/destroy requests (imgui 1.92+).
+        io.addBackendFlags(ImGuiBackendFlags.RendererHasTextures);
+
         if (glslVersion == null) {
             if (IS_APPLE) {
                 data.glslVersion = "#version 150";
@@ -330,16 +340,13 @@ public class ImGuiImplGl3 {
         destroyDeviceObjects();
 
         io.setBackendRendererName(null);
-        io.removeBackendFlags(ImGuiBackendFlags.RendererHasVtxOffset | ImGuiBackendFlags.RendererHasViewports);
+        io.removeBackendFlags(ImGuiBackendFlags.RendererHasVtxOffset | ImGuiBackendFlags.RendererHasViewports | ImGuiBackendFlags.RendererHasTextures);
         data = null;
     }
 
     public void newFrame() {
         if (data.shaderHandle == 0) {
             createDeviceObjects();
-        }
-        if (data.fontTexture == 0) {
-            createFontsTexture();
         }
     }
 
@@ -427,6 +434,14 @@ public class ImGuiImplGl3 {
         final int fbHeight = (int) (drawData.getDisplaySizeY() * drawData.getFramebufferScaleY());
         if (fbWidth <= 0 || fbHeight <= 0) {
             return;
+        }
+
+        final int textureCount = drawData.getTexturesSize();
+        for (int t = 0; t < textureCount; t++) {
+            final ImTextureData tex = drawData.getTexture(t);
+            if (tex.getStatus() != ImTextureStatus.OK) {
+                updateTexture(tex);
+            }
         }
 
         if (drawData.getCmdListsCount() <= 0) {
@@ -615,6 +630,67 @@ public class ImGuiImplGl3 {
         }
     }
 
+    protected void updateTexture(final ImTextureData tex) {
+        final int status = tex.getStatus();
+        if (status == ImTextureStatus.WantCreate) {
+            final int[] lastTexture = new int[1];
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, lastTexture);
+
+            final int glTextureId = glGenTextures();
+            glBindTexture(GL_TEXTURE_2D, glTextureId);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.getWidth(), tex.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex.getPixels());
+
+            tex.setTexID(glTextureId);
+            tex.setStatus(ImTextureStatus.OK);
+
+            glBindTexture(GL_TEXTURE_2D, lastTexture[0]);
+        } else if (status == ImTextureStatus.WantUpdates) {
+            final int[] lastTexture = new int[1];
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, lastTexture);
+
+            final int glTextureId = (int) tex.getTexID();
+            glBindTexture(GL_TEXTURE_2D, glTextureId);
+            // Needed so glTexSubImage2D reads sub-rects out of the full pixel buffer at the right stride.
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, tex.getWidth());
+
+            final ByteBuffer pixels = tex.getPixels();
+            final int bpp = tex.getBytesPerPixel();
+            final int rowStride = tex.getWidth() * bpp;
+
+            final int updateCount = tex.getUpdatesSize();
+            for (int u = 0; u < updateCount; u++) {
+                final ImTextureRect r = tex.getUpdate(u);
+                final int rx = r.getx();
+                final int ry = r.gety();
+                final int rw = r.getw();
+                final int rh = r.geth();
+                pixels.position(ry * rowStride + rx * bpp);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, rx, ry, rw, rh, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            }
+
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            tex.setStatus(ImTextureStatus.OK);
+
+            glBindTexture(GL_TEXTURE_2D, lastTexture[0]);
+        } else if (status == ImTextureStatus.WantDestroy && tex.getUnusedFrames() > 0) {
+            destroyTexture(tex);
+        }
+    }
+
+    protected void destroyTexture(final ImTextureData tex) {
+        final int glTextureId = (int) tex.getTexID();
+        if (glTextureId != 0) {
+            glDeleteTextures(glTextureId);
+        }
+        tex.setTexID(0);
+        tex.setStatus(ImTextureStatus.Destroyed);
+    }
+
     protected boolean checkShader(final int handle, final String desc) {
         final int[] status = new int[1];
         final int[] logLength = new int[1];
@@ -717,8 +793,6 @@ public class ImGuiImplGl3 {
         // Create buffers
         data.vboHandle = glGenBuffers();
         data.elementsHandle = glGenBuffers();
-
-        createFontsTexture();
 
         // Restore modified GL state
         glBindTexture(GL_TEXTURE_2D, lastTexture[0]);

@@ -144,6 +144,34 @@ public final class ImDrawData extends ImGuiStruct {
 
     ///////// End of Render Methods
 
+    ///////// Start of Texture Methods (imgui 1.92 dynamic textures) | Binding
+
+    /**
+     * Number of textures queued for backend upload this frame.
+     * Most of the time the list has a single entry with {@code ImTextureStatus_OK}, i.e. nothing to do.
+     * When a backend advertises {@link imgui.flag.ImGuiBackendFlags#RendererHasTextures},
+     * it should walk this list each frame and honor {@code WantCreate} / {@code WantUpdates} /
+     * {@code WantDestroy} statuses.
+     * <p>
+     * Returns 0 if this ImDrawData has no associated textures (e.g. custom ImDrawData).
+     */
+    public native int getTexturesSize(); /*
+        return THIS->Textures != NULL ? THIS->Textures->Size : 0;
+    */
+
+    /**
+     * Texture at the given index. See {@link #getTexturesSize()}.
+     */
+    public ImTextureData getTexture(final int index) {
+        return new ImTextureData(nGetTexture(index));
+    }
+
+    private native long nGetTexture(int index); /*
+        return (uintptr_t)(*THIS->Textures)[index];
+    */
+
+    ///////// End of Texture Methods
+
     /**
      * Only valid after Render() is called and before the next NewFrame() is called.
      */
